@@ -234,6 +234,12 @@ def find_graphene_type(
     elif type_ in (tuple, list, set):
         # TODO: do Sets really belong here?
         return List
+    # NOTE: this has to come before any `issubclass()` checks, because annotated
+    # generic types aren't valid arguments to `issubclass`
+    elif hasattr(type_, "__origin__"):
+        return convert_generic_python_type(
+            type_, field, registry, parent_type=parent_type, model=model
+        )
     elif registry and registry.get_type_for_model(type_):
         return registry.get_type_for_model(type_)
     elif registry and (
@@ -245,12 +251,6 @@ def find_graphene_type(
         # be called to update it.
         registry.add_placeholder_for_model(type_)
         return registry.get_type_for_model(type_)
-    # NOTE: this has to come before any `issubclass()` checks, because annotated
-    # generic types aren't valid arguments to `issubclass`
-    elif hasattr(type_, "__origin__"):
-        return convert_generic_python_type(
-            type_, field, registry, parent_type=parent_type, model=model
-        )
     elif isinstance(type_, T.ForwardRef):
         # A special case! We have to do a little hackery to try and resolve
         # the type that this points to, by trying to reference a "sibling" type
